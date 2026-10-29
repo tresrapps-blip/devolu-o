@@ -3302,6 +3302,23 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
             </div>
         </div>
 
+        <!-- ===== POPUP PERGUNTA (substitui prompt() nativo) ===== -->
+        <div class="popup-overlay" id="popupAsk" style="z-index:1200;">
+            <div class="popup-box" id="askBox" data-title="Informe" style="max-width:400px;">
+                <h3>Informe</h3>
+                <div class="field" style="margin-top:14px;">
+                    <label id="askLabel"></label>
+                    <input id="askInput" type="text" autocomplete="off">
+                    <textarea id="askTextarea" rows="3" style="display:none;"></textarea>
+                    <div id="askError" style="display:none;color:var(--red-dark,#b3261e);font-size:.68rem;margin-top:4px;font-weight:500;"></div>
+                </div>
+                <div class="inline-flex" style="margin-top:6px;justify-content:flex-end;gap:6px;">
+                    <button class="btn" id="askCancel" type="button">Cancelar</button>
+                    <button class="btn btn-primary" id="askOk" type="button"><i class="fas fa-check"></i> <span id="askOkText">Confirmar</span></button>
+                </div>
+            </div>
+        </div>
+
         <!-- ===== POPUP ITEM ACTIONS ===== -->
         <div class="popup-overlay" id="popupItemActions">
             <div class="popup-box" data-title="Editar item" style="max-width:460px;">
@@ -4337,6 +4354,60 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
 
         function fecharPopup(id) { document.getElementById(id).style.display = 'none'; }
 
+        // Modal de entrada (substitui prompt()). Retorna Promise<string|null> (null = cancelado)
+        function askInput(opts) {
+            opts = opts || {};
+            return new Promise(function (resolve) {
+                const ov = document.getElementById('popupAsk');
+                const box = document.getElementById('askBox');
+                const inp = opts.multiline ? document.getElementById('askTextarea') : document.getElementById('askInput');
+                const other = opts.multiline ? document.getElementById('askInput') : document.getElementById('askTextarea');
+                const err = document.getElementById('askError');
+                const okBtn = document.getElementById('askOk');
+                const cancelBtn = document.getElementById('askCancel');
+
+                box.setAttribute('data-title', opts.title || 'Informe');
+                box.querySelector('h3').textContent = opts.title || 'Informe';
+                document.getElementById('askLabel').textContent = opts.label || '';
+                document.getElementById('askOkText').textContent = opts.okText || 'Confirmar';
+                cancelBtn.textContent = opts.cancelText || 'Cancelar';
+                other.style.display = 'none';
+                inp.style.display = '';
+                inp.placeholder = opts.placeholder || '';
+                inp.value = opts.value || '';
+                err.style.display = 'none';
+
+                function close(result) {
+                    ov.style.display = 'none';
+                    okBtn.onclick = cancelBtn.onclick = null;
+                    document.removeEventListener('keydown', onKey, true);
+                    resolve(result);
+                }
+                function confirmar() {
+                    const v = inp.value.trim();
+                    if (opts.required && !v) {
+                        err.textContent = opts.requiredMsg || 'Preencha este campo para continuar.';
+                        err.style.display = 'block';
+                        inp.focus();
+                        return;
+                    }
+                    close(v);
+                }
+                function onKey(e) {
+                    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(null); }
+                    else if (e.key === 'Enter' && (!opts.multiline || e.ctrlKey || e.metaKey)) {
+                        e.preventDefault(); e.stopPropagation(); confirmar();
+                    }
+                }
+                okBtn.onclick = confirmar;
+                cancelBtn.onclick = function () { close(null); };
+                document.addEventListener('keydown', onKey, true);
+                inp.oninput = function () { err.style.display = 'none'; };
+                ov.style.display = 'flex';
+                setTimeout(function () { inp.focus(); inp.select && inp.select(); }, 30);
+            });
+        }
+
         // ===================================================================
         //  PRODUTOS
         // ===================================================================
@@ -5059,7 +5130,7 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
             fecharPopup('popupItemActions');
         }
 
-        function salvarItemActions() {
+        async function salvarItemActions() {
             if (!itemActionsData) return;
             const { globalIdx, pi } = itemActionsData;
             const dev = state.devolucoes[globalIdx];
@@ -5111,7 +5182,7 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
                 } else {
                     p.status = val;
                     if (val === 'Pendência') {
-                        const obs = prompt('Observação adicional:');
+                        const obs = await askInput({ title: 'Pendência', label: 'Observação adicional', placeholder: 'Descreva a pendência...', multiline: true, okText: 'Salvar' });
                         if (obs !== null) p.obsProduto = (p.obsProduto || '') + ' ' + obs.trim();
                     }
                 }
@@ -5124,7 +5195,7 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
             showNotification('Atualizado', 'Item atualizado.', 'success');
         }
 
-        function devolverItemCompleto() {
+        async function devolverItemCompleto() {
             if (!itemActionsData) return;
             const { globalIdx, pi } = itemActionsData;
             const dev = state.devolucoes[globalIdx];
@@ -5136,7 +5207,7 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
                 return;
             }
 
-            const nota = prompt('Número da nota fiscal para devolução de todos os itens:');
+            const nota = await askInput({ title: 'Devolver todos os itens', label: 'Número da nota fiscal para devolução de todos os itens', placeholder: 'Ex: 250754', required: true, requiredMsg: 'Informe o número da nota fiscal.', okText: 'Confirmar devolução' });
             if (nota !== null && nota.trim() !== '') {
                 dev.produtos.forEach(p => {
                     if (p.status !== 'Devolvido') {
@@ -5618,7 +5689,7 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
             document.getElementById('popupEditarDevolucao').style.display = 'flex';
         }
 
-        function salvarEditarDevolucao() {
+        async function salvarEditarDevolucao() {
             const idx = parseInt(document.getElementById('editarDevolucaoIdx').value);
             if (idx < 0 || idx >= state.devolucoes.length) return;
             const dev = state.devolucoes[idx];
@@ -5627,16 +5698,16 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
             dev.obs = obs;
             dev.status = status;
             if (status === 'Devolvido') {
-                dev.produtos.forEach(p => {
+                for (const p of dev.produtos) {
                     if (p.status !== 'Devolvido') {
                         p.status = 'Devolvido';
                         p.qtdDevolvida = p.qtd;
                         if (!p.notaFiscal) {
-                            const nota = prompt(`Número da nota fiscal para ${p.desc}:`);
+                            const nota = await askInput({ title: 'Nota fiscal', label: `Número da nota fiscal para ${p.desc}`, placeholder: 'Ex: 250754', okText: 'Confirmar', cancelText: 'Pular' });
                             if (nota !== null && nota.trim() !== '') p.notaFiscal = nota.trim();
                         }
                     }
-                });
+                }
                 if (currentUser) dev.devolvidoPor = currentUser.nome;
             }
             if (status === 'Recebido') {
