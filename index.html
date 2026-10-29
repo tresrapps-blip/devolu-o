@@ -2801,6 +2801,64 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
 .edit-add-row #editPedidoProduto{grid-column:1/2}
 .edit-add-row .btn{grid-column:2/3}
 }
+
+/* ===== Notificações (toasts) ===== */
+html body .notification-container{max-width:380px;gap:10px;bottom:20px;right:20px}
+html body .notification{--tc:#042f62;position:relative;overflow:hidden;align-items:center;gap:12px;padding:12px 14px 15px;background:var(--panel-bg);border:1px solid var(--divider);border-left:4px solid var(--tc);box-shadow:0 10px 28px rgba(4,47,98,.18);animation:toastIn .3s cubic-bezier(.2,.8,.2,1)}
+html body .notification.success{--tc:#2d8a4e;border-left-color:#2d8a4e}
+html body .notification.error{--tc:#c0392b;border-left-color:#c0392b}
+html body .notification.warning{--tc:#f07d00;border-left-color:#f07d00}
+html body .notification>i{flex:0 0 auto;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:color-mix(in srgb,var(--tc) 14%,transparent);color:var(--tc)!important;font-size:.9rem!important;margin:0!important}
+html body .notification .notif-title{font-size:.8rem;font-weight:700;letter-spacing:.2px;color:var(--text-dark)}
+html body .notification .notif-message{font-size:.72rem;line-height:1.35;margin-top:1px;color:var(--text-muted)}
+html body .notification .notif-close{align-self:flex-start;font-size:.75rem;padding:4px;opacity:.6;transition:opacity .15s}
+html body .notification .notif-close:hover{opacity:1}
+html body .notification::after{content:'';position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--tc);opacity:.55;transform-origin:left;animation:toastBar var(--dur,4000ms) linear forwards}
+html[data-theme="dark"] body .notification .notif-title{color:#fff}
+html[data-theme="dark"] body .notification{border:1px solid #242424!important;border-left:4px solid var(--tc)!important}
+@keyframes toastIn{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes toastBar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+
+/* ===== Caixa de confirmação ===== */
+.confirm-body{display:flex;align-items:flex-start;gap:14px;padding-top:18px;padding-bottom:16px}
+.confirm-icon{flex:0 0 auto;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#fff1de;color:var(--orange);font-size:1rem}
+.is-danger .confirm-icon{background:#fdeaea;color:#c0392b}
+.confirm-title{font-size:.9rem;font-weight:700;color:var(--text-dark);margin-bottom:3px}
+.confirm-msg{font-size:.78rem;line-height:1.45;color:var(--text-muted);white-space:pre-line;word-break:break-word}
+html[data-theme="dark"] .confirm-icon{background:#2a1c08;color:var(--orange)}
+html[data-theme="dark"] .is-danger .confirm-icon{background:#2e1210;color:#ff6b5e}
+html[data-theme="dark"] .confirm-title{color:#fff}
+html body #confirmOk.btn-danger{background:#c0392b!important;border-color:#c0392b!important;color:#fff!important}
+html body #confirmOk.btn-danger:hover{background:#a93226!important;border-color:#a93226!important}
+
+/* ===== Ações do cabeçalho (Dados do cliente) ===== */
+.hdr-actions{margin-left:auto;display:flex;align-items:center;gap:6px}
+.hdr-actions .hdr-sep{width:1px;height:20px;background:var(--divider-dark);margin:0 2px}
+html body .hdr-actions .btn-import-os{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:32px;padding:0 14px;border:1px solid var(--orange);background:var(--orange);color:#fff;font-family:inherit;font-size:.7rem;font-weight:600;letter-spacing:.3px;white-space:nowrap;cursor:pointer;border-radius:0;transition:background .15s,box-shadow .15s}
+html body .hdr-actions .btn-import-os:hover{background:var(--orange-2);border-color:var(--orange-2);box-shadow:0 2px 8px rgba(240,125,0,.3)}
+html body .hdr-actions .btn-import-os:active{transform:translateY(1px)}
+html body .hdr-actions .btn-import-os i{color:#fff!important;font-size:.8rem}
+html body .hdr-actions .btn-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-width:32px;padding:0;border:1px solid var(--divider-dark);background:transparent;border-radius:0;transition:background .15s,border-color .15s}
+html body .hdr-actions .btn-icon:hover{background:#fff4e6;border-color:var(--orange)}
+html[data-theme="dark"] body .hdr-actions .btn-icon{background:transparent!important;border-color:#3a3a3a!important}
+html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!important;border-color:var(--orange)!important}
+@media(max-width:700px){
+  html body .hdr-actions .btn-import-os{height:38px}
+  html body .hdr-actions .btn-icon{width:38px;height:38px;min-width:38px}
+}
+@media(max-width:380px){html body .hdr-actions .btn-import-os span{display:none}html body .hdr-actions .btn-import-os{width:38px;padding:0}}
+/* ===== Importar OS (PDF) ===== */
+.os-imp-resumo{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 16px;margin-bottom:10px}
+.os-imp-resumo div{font-size:.72rem;color:var(--text-dark);min-width:0}
+.os-imp-resumo b{display:block;font-size:.58rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text-muted);margin-bottom:1px}
+.os-imp-tag{display:inline-block;font-size:.58rem;font-weight:700;padding:1px 6px;margin-left:4px;letter-spacing:.3px;vertical-align:middle}
+.os-imp-tag.ok{background:#e3f1e6;color:#2d6a3a}
+.os-imp-tag.new{background:#fff1de;color:#a65a00}
+[data-theme="dark"] .os-imp-tag.ok{background:#14301b;color:#8fd19e}
+[data-theme="dark"] .os-imp-tag.new{background:#3a2608;color:#ffbe6b}
+.os-imp-aviso{font-size:.68rem;font-weight:500;padding:7px 10px;margin:8px 0;background:#fff1de;color:#a65a00;border-left:3px solid #f07d00}
+[data-theme="dark"] .os-imp-aviso{background:#3a2608;color:#ffbe6b}
+@media(max-width:560px){.os-imp-resumo{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -2875,7 +2933,10 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
             <div class="card">
                 <div class="card-header">
                     <i class="fas fa-user-check"></i> Dados do cliente
-                    <span style="margin-left:auto;display:flex;gap:3px;">
+                    <span class="hdr-actions">
+                        <button class="btn-import-os" type="button" onclick="document.getElementById('osPdfInput').click()" title="Importar OS em PDF e criar a devolução automaticamente"><i class="fas fa-file-import"></i><span>Importar OS (PDF)</span></button>
+                        <input type="file" id="osPdfInput" accept="application/pdf,.pdf" style="display:none;" onchange="importarOsPdf(event)">
+                        <span class="hdr-sep"></span>
                         <button class="btn-icon" onclick="abrirPopupClienteDev()" title="Cadastrar cliente"><i class="fas fa-user-plus"></i></button>
                         <button class="btn-icon" onclick="abrirPopupProdutoDev()" title="Cadastrar produto"><i class="fas fa-cube"></i></button>
                     </span>
@@ -3298,6 +3359,47 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
                 <div class="inline-flex" style="margin-top:10px;flex-wrap:wrap;">
                     <button class="btn btn-primary" id="abrirZimbraBtn"><i class="fas fa-external-link-alt"></i> Abrir Zimbra</button>
                     <button class="btn" id="fecharPopupEmail">Fechar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== POPUP IMPORTAR OS (PDF) ===== -->
+        <div class="popup-overlay" id="popupImportOs" style="z-index:1100;">
+            <div class="popup-box" data-title="Importar OS (PDF)" style="max-width:700px;">
+                <h3>Importar OS (PDF)</h3>
+                <div id="osImpResumo" class="os-imp-resumo" style="margin-top:14px;"></div>
+                <div class="grid-2">
+                    <div class="field"><label>Setor *</label><select id="osImpSetor"></select></div>
+                    <div class="field"><label>Tipo *</label><select id="osImpTipo"></select></div>
+                </div>
+                <div id="osImpAviso" class="os-imp-aviso" style="display:none;"></div>
+                <div class="table-wrap" style="max-height:280px;overflow:auto;">
+                    <table>
+                        <thead><tr><th>Produto</th><th>Cód.</th><th style="width:60px;">Qtd</th><th style="width:90px;">Cadastro</th><th id="osImpThDep" style="width:120px;display:none;">Depósito<br><select id="osImpDepAll" onchange="osImpDepTodos(this.value)" title="Aplicar a todos os itens" style="font-size:.62rem;height:22px;margin-top:2px;width:100%;"><option value="">Todos…</option></select></th></tr></thead>
+                        <tbody id="osImpItens"></tbody>
+                    </table>
+                </div>
+                <div class="inline-flex" style="margin-top:10px;justify-content:flex-end;gap:6px;">
+                    <button class="btn" type="button" onclick="fecharPopup('popupImportOs')">Cancelar</button>
+                    <button class="btn btn-primary" type="button" id="osImpConfirmar" onclick="confirmarImportOs()"><i class="fas fa-check"></i> Criar devolução</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== POPUP CONFIRMAÇÃO (substitui confirm() nativo) ===== -->
+        <div class="popup-overlay" id="popupConfirm" style="z-index:1200;">
+            <div class="popup-box" id="confirmBox" data-title="Confirmar" style="max-width:420px;">
+                <h3>Confirmar</h3>
+                <div class="confirm-body">
+                    <div class="confirm-icon" id="confirmIcon"><i class="fas fa-question"></i></div>
+                    <div class="confirm-text">
+                        <div class="confirm-title" id="confirmTitle"></div>
+                        <div class="confirm-msg" id="confirmMsg"></div>
+                    </div>
+                </div>
+                <div class="inline-flex" style="justify-content:flex-end;gap:6px;margin-top:4px;">
+                    <button class="btn" id="confirmCancel" type="button">Cancelar</button>
+                    <button class="btn btn-primary" id="confirmOk" type="button"><i class="fas fa-check"></i> <span id="confirmOkText">Confirmar</span></button>
                 </div>
             </div>
         </div>
@@ -4130,13 +4232,15 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
                     <div class="notif-content" style="flex:1;"><div class="notif-title">${title}</div><div class="notif-message">${message}</div></div>
                     <button class="notif-close" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
                 `;
+            const dur = type === 'error' ? 5500 : 4000;
+            notif.style.setProperty('--dur', dur + 'ms');
             container.appendChild(notif);
             setTimeout(() => {
                 if (notif.parentElement) {
                     notif.classList.add('removing');
                     setTimeout(() => { if (notif.parentElement) notif.remove(); }, 200);
                 }
-            }, 3000);
+            }, dur);
         }
 
         // ===================================================================
@@ -4157,6 +4261,197 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
             document.documentElement.setAttribute('data-theme', 'dark');
             document.querySelectorAll('.toggle-switch').forEach(el => el.classList.add('active'));
             document.getElementById('themeLabel').textContent = 'Ativado';
+        }
+
+        // ===================================================================
+        //  IMPORTAR OS (PDF) -> CRIA DEVOLUÇÃO
+        // ===================================================================
+        let osImportData = null;
+        const DEPOSITOS = ['DEP01', 'DEP02'];
+
+        function osImpSetDep(i, val) {
+            if (osImportData && osImportData.itens[i]) osImportData.itens[i].deposito = val;
+        }
+        function osImpDepTodos(val) {
+            if (!osImportData || !isAdmin()) return;
+            osImportData.itens.forEach(it => { it.deposito = val; });
+            document.querySelectorAll('#osImpItens select.os-imp-dep').forEach(s => { s.value = val; });
+        }
+
+        function normCod(s) {
+            const v = String(s == null ? '' : s).trim().toLowerCase().replace(/[.\s]/g, '');
+            return /^\d+$/.test(v) ? v.replace(/^0+/, '') : v;
+        }
+        function escHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        async function extrairLinhasPdf(file) {
+            if (!window['pdfjsLib']) throw new Error('Leitor de PDF não carregado.');
+            const buf = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+            const linhas = [];
+            for (let n = 1; n <= pdf.numPages; n++) {
+                const page = await pdf.getPage(n);
+                const tc = await page.getTextContent();
+                const items = tc.items.filter(i => i.str && i.str.trim())
+                    .map(i => ({ s: i.str.trim(), x: i.transform[4], y: i.transform[5] }));
+                items.sort((a, b) => (b.y - a.y) || (a.x - b.x));
+                const grupos = [];
+                items.forEach(it => {
+                    const g = grupos.find(g => Math.abs(g.y - it.y) <= 2.5);
+                    if (g) g.items.push(it); else grupos.push({ y: it.y, items: [it] });
+                });
+                grupos.sort((a, b) => b.y - a.y).forEach(g => {
+                    linhas.push(g.items.sort((a, b) => a.x - b.x).map(i => i.s).join(' '));
+                });
+            }
+            return linhas;
+        }
+
+        function parseOsLinhas(linhas) {
+            const texto = linhas.join('\n');
+            const pick = (re) => { const m = texto.match(re); return m ? m[1].trim() : ''; };
+            const os = pick(/Numero\s*OS\.?\s*:\s*(\d+)/i);
+            let pedido = pick(/N[úu]mero\s*Ped\.?\s*:\s*([\d.]+)/i);
+            const codCliente = pick(/^\s*Cliente\s*:\s*([\d.]+)/im);
+            const razao = pick(/Raz[ãa]o\s*Social\s*:\s*(.+)/i);
+            const fantasia = pick(/Fantasia\s*:\s*(.+)/i);
+            const email = pick(/E\s*m\s*a\s*i\s*l\s*:\s*(\S+@\S+)/i);
+
+            const reItem = /^\d+\s+\d+\s+([\d.]+)\s+(\d+)\s+(\d{3,6})\s+(.+?)\s+(\d{1,3}(?:\.\d{3})*,\d{3})(?:\s+[\d.]+)?\s*$/;
+            const mapa = new Map();
+            linhas.forEach(l => {
+                const m = l.match(reItem);
+                if (!m) return;
+                if (!pedido) pedido = m[1];
+                const cod = m[3];
+                const qtd = parseFloat(m[5].replace(/\./g, '').replace(',', '.'));
+                if (!qtd || qtd <= 0) return;
+                if (mapa.has(cod)) mapa.get(cod).qtd += qtd;
+                else mapa.set(cod, { cod, desc: m[4].replace(/\s+/g, ' ').trim(), qtd });
+            });
+            return {
+                os, pedido, codCliente,
+                nome: (razao || fantasia || '').trim(),
+                email,
+                itens: Array.from(mapa.values()),
+                alarme: /alarme|monitoramento/i.test(texto)
+            };
+        }
+
+        async function importarOsPdf(event) {
+            const file = event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
+                showNotification('Erro', 'Selecione um arquivo PDF.', 'error');
+                return;
+            }
+            try {
+                showNotification('Lendo PDF', file.name, 'info');
+                const linhas = await extrairLinhasPdf(file);
+                const dados = parseOsLinhas(linhas);
+                if (!dados.codCliente || !dados.nome || dados.itens.length === 0) {
+                    showNotification('Erro', 'Não foi possível identificar cliente e produtos neste PDF.', 'error');
+                    return;
+                }
+                osImportData = dados;
+                abrirPreviewImportOs();
+            } catch (err) {
+                console.error(err);
+                showNotification('Erro', 'Não foi possível ler o PDF selecionado.', 'error');
+            }
+        }
+
+        function abrirPreviewImportOs() {
+            const d = osImportData;
+            const cliente = state.clientes.find(c => normCod(c.cod) === normCod(d.codCliente));
+            const setorSel = document.getElementById('osImpSetor');
+            const tipoSel = document.getElementById('osImpTipo');
+            const setores = Array.from(document.getElementById('setorSelect').options).filter(o => o.value);
+            setorSel.innerHTML = '<option value="">Selecione</option>' + setores.map(o => `<option value="${escHtml(o.value)}">${escHtml(o.value)}</option>`).join('');
+            tipoSel.innerHTML = Array.from(document.getElementById('tipoSelect').options).map(o => `<option value="${escHtml(o.value)}">${escHtml(o.value)}</option>`).join('');
+
+            if (cliente) { setorSel.value = cliente.tipo; setorSel.disabled = true; }
+            else { setorSel.disabled = false; setorSel.value = d.alarme ? 'Alarme' : ''; }
+
+            document.getElementById('osImpResumo').innerHTML = `
+                <div><b>Cliente</b>${escHtml(cliente ? cliente.nome : d.nome)}
+                    <span class="os-imp-tag ${cliente ? 'ok' : 'new'}">${cliente ? 'CADASTRADO' : 'SERÁ CADASTRADO'}</span></div>
+                <div><b>Cód. cliente</b>${escHtml(cliente ? cliente.cod : d.codCliente)}</div>
+                <div><b>Pedido</b>${escHtml(d.pedido || '—')}</div>
+                <div><b>Nº da OS</b>${escHtml(d.os || '—')}</div>`;
+
+            let novos = 0;
+            d.itens.forEach(it => { it.deposito = ''; });
+            document.getElementById('osImpItens').innerHTML = d.itens.map((it, i) => {
+                const prod = (state.produtos || []).find(x => normCod(x.cod) === normCod(it.cod));
+                if (!prod) novos++;
+                return `<tr><td>${escHtml(prod ? prod.desc : it.desc)}</td><td>${escHtml(prod ? prod.cod : it.cod)}</td><td>${it.qtd}</td>
+                    <td><span class="os-imp-tag ${prod ? 'ok' : 'new'}" style="margin-left:0;">${prod ? 'CADASTRADO' : 'NOVO'}</span></td>${isAdmin() ? `<td><select class="os-imp-dep" data-i="${i}" onchange="osImpSetDep(${i}, this.value)" style="font-size:.62rem;height:22px;width:100%;"><option value="">—</option>${DEPOSITOS.map(x => `<option value="${x}">${x}</option>`).join('')}</select></td>` : ''}</tr>`;
+            }).join('');
+
+            document.getElementById('osImpThDep').style.display = isAdmin() ? '' : 'none';
+            const depTodos = document.getElementById('osImpDepAll');
+            depTodos.innerHTML = '<option value="">Todos…</option>' + DEPOSITOS.map(x => `<option value="${x}">${x}</option>`).join('');
+            depTodos.value = '';
+            const avisos = [];
+            const dup = state.devolucoes.find(x => normCod(x.codCliente) === normCod(d.codCliente) &&
+                (x.produtos || []).some(p => normCod(p.pedido) === normCod(d.pedido)));
+            if (dup) avisos.push(`Já existe a devolução ${dup.cod} deste cliente com o pedido ${d.pedido}.`);
+            if (novos) avisos.push(`${novos} produto(s) ainda não cadastrado(s) serão cadastrados automaticamente.`);
+            const av = document.getElementById('osImpAviso');
+            av.innerHTML = avisos.map(escHtml).join('<br>');
+            av.style.display = avisos.length ? 'block' : 'none';
+
+            document.getElementById('osImpConfirmar').innerHTML = `<i class="fas fa-check"></i> Criar devolução (${d.itens.length} ${d.itens.length === 1 ? 'item' : 'itens'})`;
+            document.getElementById('popupImportOs').style.display = 'flex';
+        }
+
+        function confirmarImportOs() {
+            const d = osImportData;
+            if (!d) return;
+            const setor = document.getElementById('osImpSetor').value;
+            const tipo = document.getElementById('osImpTipo').value;
+            if (!setor) { showNotification('Erro', 'Selecione o setor.', 'error'); return; }
+
+            let cliente = state.clientes.find(c => normCod(c.cod) === normCod(d.codCliente));
+            if (!cliente) {
+                cliente = { cod: d.codCliente.replace(/\./g, ''), nome: d.nome, tipo: setor, contrato: '', email: d.email || '' };
+                state.clientes.push(cliente);
+            }
+
+            const pedido = d.pedido || (d.os ? 'OS ' + d.os : 'S/N');
+            const produtos = d.itens.map(it => {
+                let prod = (state.produtos || []).find(x => normCod(x.cod) === normCod(it.cod));
+                if (!prod) {
+                    prod = { cod: it.cod, desc: it.desc, tipo: 'Eletrônico' };
+                    state.produtos.push(prod);
+                }
+                return { ...prod, qtd: it.qtd, pedido, deposito: isAdmin() ? (it.deposito || '') : '', status: 'Almoxarifado', qtdDevolvida: 0, notaFiscal: '', obsProduto: '' };
+            });
+
+            const cod = 'DV-' + String(state.nextDev).padStart(3, '0');
+            state.devolucoes.push({
+                cod, setor, tipo,
+                codCliente: cliente.cod,
+                nomeCliente: cliente.nome,
+                contrato: cliente.contrato || '',
+                produtos,
+                obs: d.os ? `Importado da OS ${d.os}` : 'Importado de PDF',
+                status: 'Almoxarifado', notaDevolucao: '', emailTipo: '',
+                dataCriacao: new Date().toISOString(),
+                devolvidoPor: currentUser ? currentUser.nome : 'Sistema',
+                anexos: []
+            });
+            state.nextDev++;
+            saveData();
+            document.getElementById('codDevolucao').value = 'DV-' + String(state.nextDev).padStart(3, '0');
+            renderAll();
+            fecharPopup('popupImportOs');
+            osImportData = null;
+            showNotification('Devolução criada', `${cod} - ${cliente.nome}`, 'success');
         }
 
         // ===================================================================
@@ -4353,6 +4648,44 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
         }
 
         function fecharPopup(id) { document.getElementById(id).style.display = 'none'; }
+
+        // Modal de confirmação (substitui confirm()). Retorna Promise<boolean>
+        function askConfirm(opts) {
+            opts = opts || {};
+            return new Promise(function (resolve) {
+                const ov = document.getElementById('popupConfirm');
+                const box = document.getElementById('confirmBox');
+                const okBtn = document.getElementById('confirmOk');
+                const cancelBtn = document.getElementById('confirmCancel');
+                const danger = !!opts.danger;
+
+                box.setAttribute('data-title', opts.title || 'Confirmar');
+                box.querySelector('h3').textContent = opts.title || 'Confirmar';
+                document.getElementById('confirmTitle').textContent = opts.title || 'Confirmar';
+                document.getElementById('confirmMsg').textContent = opts.message || '';
+                document.getElementById('confirmOkText').textContent = opts.okText || 'Confirmar';
+                cancelBtn.textContent = opts.cancelText || 'Cancelar';
+                box.classList.toggle('is-danger', danger);
+                document.getElementById('confirmIcon').innerHTML = danger ? '<i class="fas fa-trash-alt"></i>' : '<i class="fas fa-question"></i>';
+                okBtn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+
+                function close(result) {
+                    ov.style.display = 'none';
+                    okBtn.onclick = cancelBtn.onclick = null;
+                    document.removeEventListener('keydown', onKey, true);
+                    resolve(result);
+                }
+                function onKey(e) {
+                    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(false); }
+                }
+                okBtn.onclick = function () { close(true); };
+                cancelBtn.onclick = function () { close(false); };
+                document.addEventListener('keydown', onKey, true);
+                ov.style.display = 'flex';
+                // ações destrutivas: foco em "Cancelar" (evita confirmar sem querer com Enter)
+                setTimeout(function () { (danger ? cancelBtn : okBtn).focus(); }, 30);
+            });
+        }
 
         // Modal de entrada (substitui prompt()). Retorna Promise<string|null> (null = cancelado)
         function askInput(opts) {
@@ -4601,11 +4934,11 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
             }).join('');
         }
 
-        function removerUsuario(idx) {
+        async function removerUsuario(idx) {
             if (!currentUser || currentUser.tipo !== 'admin') return;
             const u = users[idx];
             if (u.isMaster || u.login === 'admin') { showNotification('Erro', 'Não pode remover.', 'error'); return; }
-            if (confirm(`Remover "${u.login}"?`)) { users.splice(idx, 1);
+            if (await askConfirm({ title: 'Remover usuário', message: `Deseja remover o usuário "${u.login}"?`, okText: 'Remover', danger: true })) { users.splice(idx, 1);
                 saveUsers();
                 renderUsuarios();
                 showNotification('Usuário removido', `"${u.login}"`, 'warning'); }
@@ -4874,10 +5207,10 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
         // ===================================================================
         //  FINALIZAR DEVOLUÇÃO
         // ===================================================================
-        document.getElementById('finalizarDevBtn').addEventListener('click', function() {
+        document.getElementById('finalizarDevBtn').addEventListener('click', async function() {
             const dev = montarDevolucao();
             if (!dev) return;
-            if (!confirm(`Confirmar devolução ${dev.cod} para ${dev.nomeCliente}?`)) return;
+            if (!(await askConfirm({ title: 'Finalizar devolução', message: `Confirmar a devolução ${dev.cod} para ${dev.nomeCliente}?`, okText: 'Confirmar' }))) return;
             const dataAtual = new Date().toISOString();
             state.devolucoes.push({ ...dev, status: 'Almoxarifado', notaDevolucao: '', emailTipo: '',
                 dataCriacao: dataAtual, devolvidoPor: currentUser ? currentUser.nome : 'Sistema',
@@ -5018,12 +5351,12 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
             const p = dev.produtos[i]; if (!p) return;
             definirQtdItemEdicao(idx, i, p.qtd + delta);
         }
-        function removerItemEdicao(idx, i) {
+        async function removerItemEdicao(idx, i) {
             if (!isAdmin()) return;
             const dev = state.devolucoes[idx]; if (!dev) return;
             const p = dev.produtos[i]; if (!p) return;
             if (dev.produtos.length <= 1) { showNotification('Aviso', 'A devolução precisa ter ao menos um item. Para removê-la, use a lixeira da lista.', 'warning'); return; }
-            if (!confirm(`Remover "${p.desc}" (${p.cod}) da devolução ${dev.cod}?`)) return;
+            if (!(await askConfirm({ title: 'Remover item', message: `Remover "${p.desc}" (${p.cod}) da devolução ${dev.cod}?`, okText: 'Remover', danger: true }))) return;
             dev.produtos.splice(i, 1);
             refreshEdicaoItens(idx);
             showNotification('Item removido', p.desc, 'warning');
@@ -5089,6 +5422,11 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
                             <option value="Venda" ${p.status==='Venda'?'selected':''}>Venda</option>
                             <option value="Pendência" ${p.status==='Pendência'?'selected':''}>Pendência</option>
                         </select>
+                        ${admin ? `<span style="color:#4a6a8a;margin-left:6px;">Depósito:</span>
+                        <select class="status-select" id="itemDepositoSelect">
+                            <option value="">—</option>
+                            ${DEPOSITOS.map(d => `<option value="${d}" ${p.deposito === d ? 'selected' : ''}>${d}</option>`).join('')}
+                        </select>` : ''}
                         ${p.obsProduto ? `<span style="font-size:0.58rem;color:#a89060;font-weight:600;"><i class="fas fa-info-circle"></i> ${p.obsProduto}</span>` : ''}
                     </div>
 
@@ -5110,13 +5448,13 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
             document.getElementById('popupItemActions').style.display = 'flex';
         }
 
-        function excluirItem(globalIdx, pi) {
+        async function excluirItem(globalIdx, pi) {
             if (!isAdmin()) { showNotification('Acesso negado', 'Apenas administradores.', 'error'); return; }
             const dev = state.devolucoes[globalIdx];
             if (!dev) return;
             const p = dev.produtos[pi];
             if (!p) return;
-            if (!confirm(`Excluir o item "${p.desc}" (${p.cod}) da devolução ${dev.cod}?`)) return;
+            if (!(await askConfirm({ title: 'Excluir item', message: `Excluir o item "${p.desc}" (${p.cod}) da devolução ${dev.cod}? Esta ação não pode ser desfeita.`, okText: 'Excluir', danger: true }))) return;
             dev.produtos.splice(pi, 1);
             if (dev.produtos.length === 0) {
                 state.devolucoes.splice(globalIdx, 1);
@@ -5142,6 +5480,8 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
             const nfInput = document.getElementById('itemNfInput');
             const statusSelect = document.getElementById('itemStatusSelect');
             const obsInput = document.getElementById('itemObsInput');
+            const depSel = document.getElementById('itemDepositoSelect');
+            if (depSel && isAdmin()) p.deposito = depSel.value;
 
             if (obsInput) {
                 p.obsProduto = obsInput.value.trim();
@@ -5358,7 +5698,7 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
                                         return `
                                             <tr>
                                                 <td class="col-produto"><span class="item-name">${p.desc}</span></td>
-                                                <td class="col-cod"><span class="item-detail">${p.cod}</span></td>
+                                                <td class="col-cod"><span class="item-detail">${p.cod}</span>${p.deposito ? `<span class="item-detail" style="display:inline-block;margin-left:4px;padding:0 4px;font-size:.55rem;font-weight:700;background:#e3ebf6;color:#042f62;">${p.deposito}</span>` : ''}</td>
                                                 <td class="col-qtd"><span class="item-detail">${p.qtd}</span></td>
                                                 <td class="col-ped"><span class="item-detail">${p.pedido}</span></td>
                                                 <td class="col-nf"><span class="item-nf">${p.notaFiscal||'-'}</span></td>
@@ -5475,7 +5815,7 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
                                         return `
                                             <tr>
                                                 <td class="col-produto"><span class="item-name">${p.desc}</span></td>
-                                                <td class="col-cod"><span class="item-detail">${p.cod}</span></td>
+                                                <td class="col-cod"><span class="item-detail">${p.cod}</span>${p.deposito ? `<span class="item-detail" style="display:inline-block;margin-left:4px;padding:0 4px;font-size:.55rem;font-weight:700;background:#e3ebf6;color:#042f62;">${p.deposito}</span>` : ''}</td>
                                                 <td class="col-qtd"><span class="item-detail">${p.qtd}</span></td>
                                                 <td class="col-ped"><span class="item-detail">${p.pedido}</span></td>
                                                 <td class="col-nf"><span class="item-nf">${p.notaFiscal||'-'}</span></td>
@@ -5655,7 +5995,7 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
         // ===================================================================
         //  EXCLUIR DEVOLUÇÃO
         // ===================================================================
-        function excluirDevolucao(idx) {
+        async function excluirDevolucao(idx) {
             if (!isAdmin()) { showNotification('Acesso negado', 'Apenas administradores.', 'error'); return; }
             const dev = state.devolucoes[idx];
             if (!dev) return;
@@ -5663,7 +6003,7 @@ html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
                 showNotification('Aviso', 'Devoluções já finalizadas não podem ser excluídas.', 'warning');
                 return;
             }
-            if (confirm(`Excluir a devolução ${dev.cod} do cliente ${dev.nomeCliente}?`)) {
+            if (await askConfirm({ title: 'Excluir devolução', message: `Excluir a devolução ${dev.cod} do cliente ${dev.nomeCliente}? Esta ação não pode ser desfeita.`, okText: 'Excluir', danger: true })) {
                 state.devolucoes.splice(idx, 1);
                 saveData();
                 renderAll();
@@ -7061,10 +7401,10 @@ Atenciosamente, ${currentUser ? currentUser.nome : 'Lucas Bezerra Rodrigues'}`
             showNotification('Status atualizado', `NF ${nota.numero} → ${novoStatus}`, 'info');
         }
 
-        function excluirNota(id) {
+        async function excluirNota(id) {
             const nota = state.notasRecebidas.find(n => n.id === id);
             if (!nota) return;
-            if (!confirm(`Excluir a nota ${nota.numero}?`)) return;
+            if (!(await askConfirm({ title: 'Excluir nota', message: `Excluir a nota ${nota.numero}? Esta ação não pode ser desfeita.`, okText: 'Excluir', danger: true }))) return;
             state.notasRecebidas = state.notasRecebidas.filter(n => n.id !== id);
             saveData();
             renderNotas();
@@ -7120,10 +7460,10 @@ Atenciosamente, ${currentUser ? currentUser.nome : 'Lucas Bezerra Rodrigues'}`
             ).join('');
         }
 
-        function excluirFornecedor(idx) {
+        async function excluirFornecedor(idx) {
             const f = state.fornecedores[idx];
             if (!f) return;
-            if (!confirm(`Excluir fornecedor "${f.nome}"?`)) return;
+            if (!(await askConfirm({ title: 'Excluir fornecedor', message: `Excluir o fornecedor "${f.nome}"? Esta ação não pode ser desfeita.`, okText: 'Excluir', danger: true }))) return;
             state.fornecedores.splice(idx, 1);
             saveData();
             renderFornecedores();
