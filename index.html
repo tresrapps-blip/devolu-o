@@ -2753,6 +2753,54 @@ table:has(.group-row)>tbody{display:block}
 .dashboard-grid{grid-template-columns:1fr 1fr!important}
 .ac-count{font-size:.64rem}
 }
+
+/* ===== STATUS: cores próprias + divisão por grupo ===== */
+.badge[data-st="Almoxarifado"]{background:#e3eefb!important;color:#0b5cad!important}
+.badge[data-st="Recebido"]{background:#dcf5f1!important;color:#0f766e!important}
+.badge[data-st="Devolvido"]{background:#e4f4e8!important;color:#2f7a45!important}
+.badge[data-st="Enviado E-mail"]{background:#eee6fa!important;color:#6b3fb5!important}
+.badge[data-st="Venda"]{background:#fff1e0!important;color:#b25e00!important}
+.badge[data-st="Pendência"]{background:#fde8e6!important;color:#b3261e!important}
+.badge[data-st]{border-radius:0;font-weight:700;letter-spacing:.2px}
+.group-row[data-st="Almoxarifado"]{--st:#1e6fd0}
+.group-row[data-st="Recebido"]{--st:#14998e}
+.group-row[data-st="Devolvido"]{--st:#3a9b58}
+.group-row[data-st="Enviado E-mail"]{--st:#8a5cd6}
+.group-row[data-st="Venda"]{--st:#f07d00}
+.group-row[data-st="Pendência"]{--st:#d9443a}
+@media screen{
+.group-row[data-st] td:first-child{box-shadow:inset 4px 0 0 var(--st)!important}
+.group-row.st-first>td{border-top:2px solid var(--st)!important}
+}
+html[data-theme="dark"] .badge[data-st="Almoxarifado"]{background:#0d1a2b!important;color:#7fb0ea!important}
+html[data-theme="dark"] .badge[data-st="Recebido"]{background:#08201d!important;color:#5fd3c4!important}
+html[data-theme="dark"] .badge[data-st="Devolvido"]{background:#0c1f12!important;color:#7fd39a!important}
+html[data-theme="dark"] .badge[data-st="Enviado E-mail"]{background:#1a1226!important;color:#c3b0ee!important}
+html[data-theme="dark"] .badge[data-st="Venda"]{background:#241500!important;color:#ffb35c!important}
+html[data-theme="dark"] .badge[data-st="Pendência"]{background:#2a0f0d!important;color:#ff8a80!important}
+
+/* ===== EDIÇÃO DE ITENS NO POPUP ===== */
+.edit-item{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--divider)}
+.edit-item-info{display:flex;flex-direction:column;min-width:0}
+.edit-item-nome{font-size:.74rem;word-break:break-word}
+.edit-item-info small{font-size:.6rem;color:var(--text-muted)}
+.edit-item-qtd{display:grid;grid-template-columns:30px 54px 30px;gap:4px;align-items:center}
+.edit-item-qtd .btn-icon{min-width:30px;height:30px;padding:0}
+.edit-item-qtd input{width:100%;height:30px;text-align:center}
+.edit-add-row{display:grid;grid-template-columns:1fr 64px 110px 36px;gap:6px;margin-top:8px}
+.edit-itens-aviso{font-size:.66rem;color:#b25e00;padding:6px 0}
+html[data-theme="dark"] .edit-itens-aviso{color:#ffb35c}
+@media screen and (max-width:768px){
+.group-row[data-st]{border-left-color:var(--st)!important}
+.group-row[data-st]>td:first-child{box-shadow:none!important}
+.group-row.st-first>td{border-top:none!important}
+.group-row.st-first{margin-top:16px}
+.edit-item{grid-template-columns:1fr auto}
+.edit-item-info{grid-column:1/-1}
+.edit-add-row{grid-template-columns:1fr 70px}
+.edit-add-row #editPedidoProduto{grid-column:1/2}
+.edit-add-row .btn{grid-column:2/3}
+}
 </style>
 </head>
 <body>
@@ -3285,6 +3333,17 @@ table:has(.group-row)>tbody{display:block}
                 </div>
                 <div class="field" style="margin-top:6px;"><label>Marcar como Recebido (todos os itens)</label>
                     <button class="btn btn-sm btn-primary" onclick="marcarTudoRecebido()"><i class="fas fa-check"></i> Receber todos</button>
+                </div>
+
+                <div class="field" style="margin-top:10px;" id="editarItensBox">
+                    <label>Itens da devolução (adicionar, remover ou alterar quantidade)</label>
+                    <div id="editarItensLista"></div>
+                    <div id="editarItensAdd" class="edit-add-row">
+                        <input id="editBuscaProduto" list="produtoList" placeholder="Código ou nome do produto">
+                        <input id="editQtdProduto" type="number" min="1" value="1" title="Quantidade">
+                        <input id="editPedidoProduto" placeholder="Nº pedido">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="adicionarItemEdicao()" title="Adicionar item"><i class="fas fa-plus"></i></button>
+                    </div>
                 </div>
 
                 <!-- Anexos dentro do popup de edição -->
@@ -4305,7 +4364,7 @@ table:has(.group-row)>tbody{display:block}
             renderProdutos();
             fecharPopup('popupProdutoDev');
             showNotification('Produto cadastrado', `${cod} - ${desc}`, 'success');
-            document.getElementById('buscaProduto').value = cod;
+            document.getElementById('buscaProduto').value = `${cod} - ${desc}`;
         }
 
         function renderProdutos() {
@@ -4320,7 +4379,7 @@ table:has(.group-row)>tbody{display:block}
             ).join('');
             // Datalist com codigo + descricao
             document.getElementById('produtoList').innerHTML = state.produtos.map(p =>
-                `<option value="${p.cod}">${p.desc} - ${p.cod}</option>`).join('');
+                `<option value="${String(p.cod + ' - ' + p.desc).replace(/"/g, '&quot;')}"></option>`).join('');
         }
 
         // ===================================================================
@@ -4565,8 +4624,7 @@ table:has(.group-row)>tbody{display:block}
             let pedido = document.getElementById('pedidoProduto').value.trim();
             if (orderPinned) pedido = pinnedOrder;
             if (!pedido) { showNotification('Erro', 'Nº do Pedido é obrigatório!', 'error'); return; }
-            let produto = state.produtos.find(p => p.cod === busca);
-            if (!produto) produto = state.produtos.find(p => p.desc.toLowerCase().includes(busca.toLowerCase()));
+            let produto = resolverProduto(busca);
             if (!produto) { showNotification('Erro', 'Produto não encontrado!', 'error'); return; }
             const qtd = parseInt(document.getElementById('qtdProduto').value) || 1;
             const existing = state.produtosDev.find(p => p.cod === produto.cod && p.pedido === pedido);
@@ -4784,6 +4842,141 @@ table:has(.group-row)>tbody{display:block}
 
         function isAdmin() { return currentUser && currentUser.tipo === 'admin'; }
 
+
+        // ===== CORES / DIVISÃO POR STATUS =====
+        const STATUS_NOMES = ['Almoxarifado', 'Recebido', 'Devolvido', 'Enviado E-mail', 'Venda', 'Pendência'];
+        function colorirStatus() {
+            document.querySelectorAll('.badge').forEach(b => {
+                const t = b.textContent.trim();
+                if (STATUS_NOMES.includes(t)) b.setAttribute('data-st', t);
+            });
+            document.querySelectorAll('tr.group-row').forEach(tr => {
+                const b = tr.querySelector('.badge[data-st]');
+                if (b) tr.setAttribute('data-st', b.getAttribute('data-st'));
+            });
+            document.querySelectorAll('tbody').forEach(tb => {
+                let prev = null;
+                tb.querySelectorAll(':scope > tr.group-row').forEach(tr => {
+                    const st = tr.getAttribute('data-st');
+                    tr.classList.toggle('st-first', prev !== null && st !== prev);
+                    prev = st;
+                });
+            });
+        }
+        (function () {
+            let raf = null;
+            const obs = new MutationObserver(() => { if (raf) return; raf = requestAnimationFrame(() => { raf = null; colorirStatus(); }); });
+            obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+            colorirStatus();
+        })();
+
+        // ===== BUSCA DE PRODUTO (código + descrição) =====
+        function resolverProduto(busca) {
+            const b = (busca || '').trim();
+            if (!b) return null;
+            const lista = state.produtos || [];
+            let p = lista.find(x => `${x.cod} - ${x.desc}` === b);
+            if (!p) { const c = b.split(' - ')[0].trim(); p = lista.find(x => String(x.cod) === c); }
+            if (!p) p = lista.find(x => String(x.cod).toLowerCase() === b.toLowerCase());
+            if (!p) p = lista.find(x => String(x.desc).toLowerCase().includes(b.toLowerCase()));
+            return p || null;
+        }
+        function formatarCampoProduto(el) {
+            const p = resolverProduto(el.value);
+            if (p) el.value = `${p.cod} - ${p.desc}`;
+        }
+        document.addEventListener('change', function(e) {
+            if (e.target && (e.target.id === 'buscaProduto' || e.target.id === 'editBuscaProduto')) formatarCampoProduto(e.target);
+        });
+
+        // ===== EDIÇÃO DE ITENS (administrador) =====
+        function ajustarItemAposQtd(dev, p) {
+            const dv = p.qtdDevolvida || 0;
+            if (dv > p.qtd) {
+                p.qtdDevolvida = p.qtd;
+                if (p.status !== 'Devolvido') { p.status = 'Devolvido'; if (currentUser) dev.devolvidoPor = currentUser.nome; }
+            } else if (p.status === 'Devolvido' && dv < p.qtd) {
+                p.status = dv > 0 ? 'Recebido' : 'Almoxarifado';
+            }
+        }
+        function refreshEdicaoItens(idx) {
+            const dev = state.devolucoes[idx];
+            if (!dev) return;
+            atualizarStatusDevolucao(idx);
+            saveData();
+            renderAll();
+            const sel = document.getElementById('editarStatusDevolucao');
+            if (sel) sel.value = dev.status || 'Almoxarifado';
+            renderItensEdicao(idx);
+        }
+        function renderItensEdicao(idx) {
+            const dev = state.devolucoes[idx];
+            const box = document.getElementById('editarItensLista');
+            const add = document.getElementById('editarItensAdd');
+            if (!dev || !box) return;
+            const trava = dev.status === 'Devolvido';
+            if (add) add.style.display = trava ? 'none' : '';
+            const dis = trava ? 'disabled' : '';
+            box.innerHTML = (trava ? '<div class="edit-itens-aviso">Devolução finalizada: altere o status acima para reabrir e editar os itens.</div>' : '') +
+                dev.produtos.map((p, i) => `
+                <div class="edit-item">
+                    <div class="edit-item-info">
+                        <span class="edit-item-nome"><strong>${p.cod}</strong> - ${p.desc}</span>
+                        <small>Pedido ${p.pedido || '-'} · ${p.status || 'Almoxarifado'} · devolvido ${p.qtdDevolvida || 0}/${p.qtd}</small>
+                    </div>
+                    <div class="edit-item-qtd">
+                        <button type="button" class="btn btn-icon" ${dis} onclick="alterarQtdItemEdicao(${idx},${i},-1)" title="Diminuir">−</button>
+                        <input type="number" min="1" value="${p.qtd}" ${dis} onchange="definirQtdItemEdicao(${idx},${i},this.value)">
+                        <button type="button" class="btn btn-icon" ${dis} onclick="alterarQtdItemEdicao(${idx},${i},1)" title="Aumentar">+</button>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-danger edit-item-del" ${dis} onclick="removerItemEdicao(${idx},${i})" title="Remover item"><i class="fas fa-trash-alt"></i></button>
+                </div>`).join('');
+        }
+        function definirQtdItemEdicao(idx, i, valor) {
+            if (!isAdmin()) return;
+            const dev = state.devolucoes[idx]; if (!dev) return;
+            const p = dev.produtos[i]; if (!p) return;
+            const n = parseInt(valor);
+            if (!n || n < 1) { showNotification('Erro', 'A quantidade deve ser pelo menos 1.', 'error'); renderItensEdicao(idx); return; }
+            p.qtd = n;
+            ajustarItemAposQtd(dev, p);
+            refreshEdicaoItens(idx);
+        }
+        function alterarQtdItemEdicao(idx, i, delta) {
+            const dev = state.devolucoes[idx]; if (!dev) return;
+            const p = dev.produtos[i]; if (!p) return;
+            definirQtdItemEdicao(idx, i, p.qtd + delta);
+        }
+        function removerItemEdicao(idx, i) {
+            if (!isAdmin()) return;
+            const dev = state.devolucoes[idx]; if (!dev) return;
+            const p = dev.produtos[i]; if (!p) return;
+            if (dev.produtos.length <= 1) { showNotification('Aviso', 'A devolução precisa ter ao menos um item. Para removê-la, use a lixeira da lista.', 'warning'); return; }
+            if (!confirm(`Remover "${p.desc}" (${p.cod}) da devolução ${dev.cod}?`)) return;
+            dev.produtos.splice(i, 1);
+            refreshEdicaoItens(idx);
+            showNotification('Item removido', p.desc, 'warning');
+        }
+        function adicionarItemEdicao() {
+            if (!isAdmin()) return;
+            const idx = parseInt(document.getElementById('editarDevolucaoIdx').value);
+            const dev = state.devolucoes[idx]; if (!dev) return;
+            const produto = resolverProduto(document.getElementById('editBuscaProduto').value);
+            if (!produto) { showNotification('Erro', 'Produto não encontrado!', 'error'); return; }
+            const qtd = parseInt(document.getElementById('editQtdProduto').value) || 1;
+            if (qtd < 1) { showNotification('Erro', 'Quantidade inválida.', 'error'); return; }
+            let pedido = document.getElementById('editPedidoProduto').value.trim();
+            if (!pedido) pedido = (dev.produtos[0] && dev.produtos[0].pedido) || '';
+            const ex = dev.produtos.find(x => x.cod === produto.cod && (x.pedido || '') === pedido);
+            if (ex) { ex.qtd += qtd; ajustarItemAposQtd(dev, ex); }
+            else dev.produtos.push({ ...produto, qtd, pedido, status: 'Almoxarifado', qtdDevolvida: 0, notaFiscal: '', obsProduto: '' });
+            document.getElementById('editBuscaProduto').value = '';
+            document.getElementById('editQtdProduto').value = '1';
+            refreshEdicaoItens(idx);
+            showNotification('Item adicionado', `${produto.desc} (${qtd}x)`, 'success');
+        }
+
+
         // ===== POPUP ITEM ACTIONS =====
         function abrirItemActions(globalIdx, pi) {
             const dev = state.devolucoes[globalIdx];
@@ -4805,7 +4998,7 @@ table:has(.group-row)>tbody{display:block}
                     </div>
 
                     <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:0.68rem;background:#f0f6fe;padding:7px 10px;border:1px solid #2a5a9a;">
-                        <span><span style="color:#4a6a8a;">Qtd:</span> <strong>${p.qtd}</strong></span>
+                        <span><span style="color:#4a6a8a;">Qtd:</span> ${(admin && !isLocked) ? `<input type="number" class="qtd-input" id="itemQtdTotalInput" value="${p.qtd}" min="1" style="width:56px;">` : `<strong>${p.qtd}</strong>`}</span>
                         <span><span style="color:#4a6a8a;">Devolvido:</span>
                             <input type="number" class="qtd-input" id="itemQtdInput" value="${p.qtdDevolvida||0}" min="0" max="${p.qtd}" ${!admin ? 'disabled' : ''} style="width:50px;">
                             / ${p.qtd}
@@ -4885,6 +5078,13 @@ table:has(.group-row)>tbody{display:block}
 
             if (nfInput) {
                 p.notaFiscal = nfInput.value.trim();
+            }
+
+            const qtdTotalInput = document.getElementById('itemQtdTotalInput');
+            if (qtdTotalInput) {
+                const nq = parseInt(qtdTotalInput.value);
+                if (!nq || nq < 1) { showNotification('Erro', 'A quantidade deve ser pelo menos 1.', 'error'); return; }
+                if (nq !== p.qtd) { p.qtd = nq; ajustarItemAposQtd(dev, p); }
             }
 
             if (qtdInput) {
@@ -5036,8 +5236,8 @@ table:has(.group-row)>tbody{display:block}
             if (buscaEquip) list = list.filter(d => d.produtos.some(p => p.desc.toLowerCase().includes(buscaEquip) || p
                 .cod.toLowerCase().includes(buscaEquip)));
 
-            const order = { 'Enviado E-mail': 1, 'Venda': 1, 'Almoxarifado': 2, 'Recebido': 2 };
-            list.sort((a, b) => (order[a.status] ?? 2) - (order[b.status] ?? 2));
+            const order = { 'Enviado E-mail': 1, 'Venda': 2, 'Recebido': 3, 'Almoxarifado': 4 };
+            list.sort((a, b) => (order[a.status] ?? 5) - (order[b.status] ?? 5));
 
             const admin = isAdmin();
 
@@ -5411,6 +5611,10 @@ table:has(.group-row)>tbody{display:block}
             document.getElementById('editarObsDevolucao').value = dev.obs || '';
             document.getElementById('editarStatusDevolucao').value = dev.status || 'Almoxarifado';
             renderAnexosEdicao(idx);
+            renderItensEdicao(idx);
+            document.getElementById('editBuscaProduto').value = '';
+            document.getElementById('editQtdProduto').value = '1';
+            document.getElementById('editPedidoProduto').value = '';
             document.getElementById('popupEditarDevolucao').style.display = 'flex';
         }
 
