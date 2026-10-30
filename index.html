@@ -3135,6 +3135,7 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
                     <div class="settings-control" style="display:flex; align-items:center; gap:8px;">
                         <span style="font-size:0.68rem;color:#4a6a8a;font-weight:600;" id="pdfFundoStatus">Nenhum arquivo</span>
                         <button class="btn btn-sm" onclick="document.getElementById('pdfFundoInput').click()"><i class="fas fa-file-pdf"></i> Importar PDF</button>
+                        <button class="btn btn-sm" id="btnOtimizarPdfFundo" onclick="otimizarPdfFundo()" style="display:none;" title="Reduz o tamanho da imagem do fundo (economiza o limite de download do Firebase)"><i class="fas fa-compress-alt"></i> Otimizar</button>
                         <button class="btn btn-sm btn-danger" id="btnRemoverPdfFundo" onclick="removerPdfFundo()" style="display:none;"><i class="fas fa-times"></i></button>
                         <input type="file" id="pdfFundoInput" accept="application/pdf" style="display:none;" onchange="importarPdfFundo(event)">
                     </div>
@@ -4167,6 +4168,7 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
                 loadData();
                 await loadInitialData();
                 setupRealtimeListener();
+                atualizarStatusPdfFundo();
                 setTimeout(migrarBlobsLegados, 4000);
                 atualizarStatusPdfFundo();
                 showNotification('Bem-vindo', `${user.nome} logado!`, 'success');
@@ -4591,16 +4593,18 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
             const status = document.getElementById('pdfFundoStatus');
             const btnRemover = document.getElementById('btnRemoverPdfFundo');
             if (!status || !btnRemover) return;
-            if (pdfFundoImagemGlobal || pdfFundoImagem) {
-                status.textContent = 'PDF carregado';
-                if (currentUser && currentUser.tipo === 'admin') {
-                    btnRemover.style.display = 'inline-flex';
-                } else {
-                    btnRemover.style.display = 'none';
-                }
+            const btnOtimizar = document.getElementById('btnOtimizarPdfFundo');
+            const atual = pdfFundoImagemGlobal || pdfFundoImagem;
+            if (atual) {
+                const kb = Math.round(String(atual).length / 1024);
+                status.textContent = 'PDF carregado (' + (kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB' : kb + ' KB') + ')';
+                const admin = !!(currentUser && currentUser.tipo === 'admin');
+                btnRemover.style.display = admin ? 'inline-flex' : 'none';
+                if (btnOtimizar) btnOtimizar.style.display = (admin && kb > 300) ? 'inline-flex' : 'none';
             } else {
                 status.textContent = 'Nenhum arquivo';
                 btnRemover.style.display = 'none';
+                if (btnOtimizar) btnOtimizar.style.display = 'none';
             }
         }
 
@@ -4626,8 +4630,13 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
                 const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
                 await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-                const dataUrl = canvas.toDataURL('image/png');
+                // usa o formato menor (PNG ou JPEG) para gastar menos download do Firebase
+                const pngUrl = canvas.toDataURL('image/png');
+                const jpgUrl = canvas.toDataURL('image/jpeg', 0.9);
+                const dataUrl = jpgUrl.length < pngUrl.length ? jpgUrl : pngUrl;
                 pdfFundoImagem = dataUrl;
                 pdfFundoImagemGlobal = dataUrl;
                 await idbPdf.set('pdfFundoImagem', dataUrl);
@@ -4642,6 +4651,53 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
                 showNotification('Erro', 'Não foi possível processar o PDF selecionado.', 'error');
             }
             event.target.value = '';
+        }
+
+        async function otimizarPdfFundo() {
+            if (!currentUser || currentUser.tipo !== 'admin') {
+                showNotification('Acesso negado', 'Apenas administradores podem alterar o fundo.', 'error');
+                return;
+            }
+            const atual = pdfFundoImagemGlobal || pdfFundoImagem;
+            if (!atual) return;
+            try {
+                const novo = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const c = document.createElement('canvas');
+                        c.width = img.width; c.height = img.height;
+                        const cx = c.getContext('2d');
+                        cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, c.width, c.height);
+                        cx.drawImage(img, 0, 0);
+                        resolve(c.toDataURL('image/jpeg', 0.9));
+                    };
+                    img.onerror = reject;
+                    img.src = atual;
+                });
+                const kbAntes = Math.round(atual.length / 1024), kbDepois = Math.round(novo.length / 1024);
+                if (novo.length > atual.length * 0.85) {
+                    showNotification('Já está leve', `O fundo ocupa ${kbAntes} KB e não há ganho relevante.`, 'info');
+                    return;
+                }
+                const ok = await askConfirm({
+                    title: 'Otimizar fundo de impressão',
+                    message: `Reduzir o fundo de ${kbAntes} KB para ${kbDepois} KB (mesma resolução, qualidade visual praticamente igual)? A mudança vale para todos os usuários.`,
+                    okText: 'Otimizar'
+                });
+                if (!ok) return;
+                pdfFundoImagem = novo;
+                pdfFundoImagemGlobal = novo;
+                await idbPdf.set('pdfFundoImagem', novo);
+                const verPdf = String(Date.now());
+                await database.ref('servisData/pdfFundoImagem').set(novo);
+                await database.ref('servisData/pdfFundoVer').set(verPdf);
+                localStorage.setItem('pdfFundoVer', verPdf);
+                atualizarStatusPdfFundo();
+                showNotification('Fundo otimizado', `${kbAntes} KB → ${kbDepois} KB`, 'success');
+            } catch (err) {
+                console.error(err);
+                showNotification('Erro', 'Não foi possível otimizar o fundo.', 'error');
+            }
         }
 
         async function removerPdfFundo() {
@@ -7050,6 +7106,7 @@ Atenciosamente, ${currentUser ? currentUser.nome : 'Lucas Bezerra Rodrigues'}`
                 lida: false
             };
             state.chat.push(msg);
+            if (state.chat.length > 400) state.chat = state.chat.slice(-300);
             saveData();
             input.value = '';
             renderChat();
