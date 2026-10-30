@@ -3636,6 +3636,22 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
         let saveTimer = null;
         let pdfFundoImagem = localStorage.getItem('pdfFundoImagem') || null;
         let pdfFundoImagemGlobal = null;
+        // cache do PDF de fundo em IndexedDB (localStorage tem ~5 MB e estourava, forçando novo download a cada abertura)
+        const idbPdf = {
+            open() { return new Promise((res, rej) => { const r = indexedDB.open('servisCache', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+            async get(k) { try { const db = await this.open(); return await new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => rej(q.error); }); } catch (e) { return null; } },
+            async set(k, v) { try { const db = await this.open(); await new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); if (v == null) tx.objectStore('kv').delete(k); else tx.objectStore('kv').put(v, k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); return true; } catch (e) { return false; } }
+        };
+        const pdfCacheReady = (async () => {
+            try {
+                if (!pdfFundoImagem) {
+                    const v = await idbPdf.get('pdfFundoImagem');
+                    if (v) pdfFundoImagem = v;
+                } else if (await idbPdf.set('pdfFundoImagem', pdfFundoImagem)) {
+                    try { localStorage.removeItem('pdfFundoImagem'); } catch (e) {}
+                }
+            } catch (e) {}
+        })();
         let notesSaveTimer = null;
         let notesWasMinimized = false;
 
@@ -3692,8 +3708,99 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
         }
         function itemSig(x) { return (x === null || x === undefined) ? undefined : stable(fbNorm(x)); }
 
+        // ===== ARQUIVOS PESADOS FORA DOS DADOS PRINCIPAIS (economia de download) =====
+        // Anexos e fotos ficam em "servisBlobs/<id>" e só são baixados quando alguém abre o arquivo.
+        // Nos dados principais fica só o nome/tamanho/ref (poucos bytes).
+        const blobCache = new Map();
+        function blobNovoId() { return 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+        async function blobPutId(id, dataUrl) {
+            await database.ref('servisBlobs/' + id).set(dataUrl);
+            blobCache.set(id, dataUrl);
+            return id;
+        }
+        async function blobPut(dataUrl) { return blobPutId(blobNovoId(), dataUrl); }
+        async function blobGet(id) {
+            if (!id) return null;
+            if (blobCache.has(id)) return blobCache.get(id);
+            const snap = await database.ref('servisBlobs/' + id).once('value');
+            const v = snap.val();
+            if (v) blobCache.set(id, v);
+            return v || null;
+        }
+        function blobDelete(ids) {
+            (ids || []).filter(Boolean).forEach(id => {
+                blobCache.delete(id);
+                database.ref('servisBlobs/' + id).remove().catch(() => {});
+            });
+        }
+        async function dadosDoAnexo(a) {
+            if (!a) return null;
+            if (a.dados) return a.dados;
+            if (a.ref) return await blobGet(a.ref);
+            return null;
+        }
+        function comprimirImagemDataUrl(dataUrl, maxLado, qual) {
+            return new Promise(resolve => {
+                if (!dataUrl || !/^data:image\/(jpeg|jpg|png|webp)/i.test(dataUrl)) return resolve(dataUrl);
+                maxLado = maxLado || 1600; qual = qual || 0.8;
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const esc = Math.min(1, maxLado / Math.max(img.width, img.height));
+                        const w = Math.max(1, Math.round(img.width * esc)), h = Math.max(1, Math.round(img.height * esc));
+                        const c = document.createElement('canvas'); c.width = w; c.height = h;
+                        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+                        const out = c.toDataURL('image/jpeg', qual);
+                        resolve(out.length < dataUrl.length ? out : dataUrl);
+                    } catch (e) { resolve(dataUrl); }
+                };
+                img.onerror = () => resolve(dataUrl);
+                img.src = dataUrl;
+            });
+        }
+        async function prepararAnexos(lista) {
+            const out = [];
+            for (const a of (lista || [])) {
+                if (a.ref && !a.dados) { out.push(a); continue; }
+                const dados = await comprimirImagemDataUrl(a.dados);
+                try {
+                    const ref = await blobPut(dados);
+                    out.push({ nome: a.nome, tipo: /^data:image\/jpeg/i.test(dados) ? 'image/jpeg' : a.tipo, tamanho: a.tamanho, ref });
+                } catch (e) {
+                    // plano B: se o caminho separado não estiver liberado nas regras do Firebase, salva junto (como antes)
+                    console.warn('servisBlobs indisponível, salvando anexo junto aos dados', e);
+                    out.push({ nome: a.nome, tipo: a.tipo, tamanho: a.tamanho, dados });
+                }
+            }
+            return out;
+        }
+
+        // Migração automática (administrador): move anexos/fotos antigos que ainda estão dentro dos dados principais
+        let migrandoBlobs = false;
+        async function migrarBlobsLegados() {
+            if (migrandoBlobs || !syncReady || !currentUser || currentUser.tipo !== 'admin') return;
+            migrandoBlobs = true;
+            let movidos = 0;
+            try {
+                for (const d of state.devolucoes) {
+                    if (!d || !Array.isArray(d.anexos)) continue;
+                    for (const a of d.anexos) {
+                        if (a && a.dados && !a.ref) { a.ref = await blobPut(a.dados); delete a.dados; movidos++; }
+                    }
+                }
+                for (const n of state.notasRecebidas) {
+                    if (n && n.foto && !n.fotoRef) { n.fotoRef = await blobPut(n.foto); delete n.foto; movidos++; }
+                }
+                if (movidos) {
+                    saveData(); renderAll(); renderNotas();
+                    showNotification('Sistema otimizado', `${movidos} arquivo(s) movido(s) para armazenamento separado.`, 'success');
+                }
+            } catch (e) { console.error('migração de anexos', e); }
+            finally { migrandoBlobs = false; }
+        }
+
         function persistLocal() {
-            localStorage.setItem('servisData', JSON.stringify({
+            try { localStorage.setItem('servisData', JSON.stringify({
                 devolucoes: state.devolucoes,
                 produtos: state.produtos,
                 clientes: state.clientes,
@@ -3703,7 +3810,7 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
                 chat: state.chat,
                 fornecedores: state.fornecedores,
                 notasRecebidas: state.notasRecebidas,
-            }));
+            })); } catch (e) { console.warn('Cache local indisponível', e); }
         }
 
         function scheduleRemoteRender() {
@@ -3753,6 +3860,7 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
                     renderAll();
                     atualizarStatusPdfFundo();
                     updateSyncStatus(true);
+                    setTimeout(migrarBlobsLegados, 4000);
                     if (syncPendingSave) { syncPendingSave = false; queueSave(); }
                     resolve();
                 };
@@ -3810,17 +3918,20 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
                 // PDF de fundo: só baixa a imagem se a versão mudou
                 track('pdfFundoVer', (snap) => {
                     const sv = snap.val() === null ? '0' : String(snap.val());
-                    const lv = localStorage.getItem('pdfFundoVer');
-                    if (lv === null && sv === '0' && pdfFundoImagem) { localStorage.setItem('pdfFundoVer', sv); pdfFundoImagemGlobal = pdfFundoImagem; return false; }
-                    if (lv === sv && (pdfFundoImagem || sv === '0')) { if (pdfFundoImagem) pdfFundoImagemGlobal = pdfFundoImagem; return false; }
-                    database.ref('servisData/pdfFundoImagem').once('value').then(s2 => {
-                        const img = s2.val();
-                        pdfFundoImagemGlobal = img || null;
-                        pdfFundoImagem = img || null;
-                        if (img) localStorage.setItem('pdfFundoImagem', img); else localStorage.removeItem('pdfFundoImagem');
-                        localStorage.setItem('pdfFundoVer', sv);
-                        atualizarStatusPdfFundo();
-                    }).catch(() => {});
+                    pdfCacheReady.then(() => {
+                        const lv = localStorage.getItem('pdfFundoVer');
+                        if (lv === null && sv === '0' && pdfFundoImagem) { try { localStorage.setItem('pdfFundoVer', sv); } catch (e) {} pdfFundoImagemGlobal = pdfFundoImagem; atualizarStatusPdfFundo(); return; }
+                        if (lv === sv && (pdfFundoImagem || sv === '0')) { if (pdfFundoImagem) pdfFundoImagemGlobal = pdfFundoImagem; atualizarStatusPdfFundo(); return; }
+                        database.ref('servisData/pdfFundoImagem').once('value').then(async s2 => {
+                            const img = s2.val();
+                            pdfFundoImagemGlobal = img || null;
+                            pdfFundoImagem = img || null;
+                            await idbPdf.set('pdfFundoImagem', img || null);
+                            try { localStorage.removeItem('pdfFundoImagem'); } catch (e) {}
+                            try { localStorage.setItem('pdfFundoVer', sv); } catch (e) {}
+                            atualizarStatusPdfFundo();
+                        }).catch(() => {});
+                    });
                     return false;
                 });
 
@@ -3900,7 +4011,7 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
         }
 
         function saveData() {
-            localStorage.setItem('servisData', JSON.stringify({
+            try { localStorage.setItem('servisData', JSON.stringify({
                 devolucoes: state.devolucoes,
                 produtos: state.produtos,
                 clientes: state.clientes,
@@ -3910,7 +4021,7 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
                 chat: state.chat,
                 fornecedores: state.fornecedores,
                 notasRecebidas: state.notasRecebidas,
-            }));
+            })); } catch (e) { console.warn('Cache local indisponível', e); }
             queueSave();
         }
 
@@ -3918,6 +4029,20 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
             localStorage.setItem('servisUsers', JSON.stringify(users.filter(u => !u.isMaster)));
             queueSave();
         }
+
+        // App em segundo plano há mais de 5 min: fecha a conexão (libera uma das 100 conexões simultâneas).
+        // Ao voltar, reconecta e o Firebase só baixa o que mudou.
+        (function () {
+            let t = null;
+            document.addEventListener('visibilitychange', function () {
+                clearTimeout(t);
+                if (document.hidden) {
+                    t = setTimeout(function () { try { database.goOffline(); updateSyncStatus(false); } catch (e) {} }, 5 * 60 * 1000);
+                } else {
+                    try { database.goOnline(); if (syncReady) updateSyncStatus(true); } catch (e) {}
+                }
+            });
+        })();
 
         function updateSyncStatus(connected) {
             const dots = document.querySelectorAll('.sync-dot');
@@ -4042,6 +4167,7 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
                 loadData();
                 await loadInitialData();
                 setupRealtimeListener();
+                setTimeout(migrarBlobsLegados, 4000);
                 atualizarStatusPdfFundo();
                 showNotification('Bem-vindo', `${user.nome} logado!`, 'success');
                 // Inicializa sistema de abas
@@ -4056,7 +4182,7 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
 
         function doLogout() {
             currentUser = null;
-            detachSync();
+            // listeners mantidos: evita baixar todos os dados de novo no próximo login
             document.body.classList.remove('logged-in');
             localStorage.removeItem('servisSession');
             closeNotes();
@@ -4504,7 +4630,7 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
                 const dataUrl = canvas.toDataURL('image/png');
                 pdfFundoImagem = dataUrl;
                 pdfFundoImagemGlobal = dataUrl;
-                localStorage.setItem('pdfFundoImagem', dataUrl);
+                await idbPdf.set('pdfFundoImagem', dataUrl);
                 const verPdf = String(Date.now());
                 await database.ref('servisData/pdfFundoImagem').set(dataUrl);
                 await database.ref('servisData/pdfFundoVer').set(verPdf);
@@ -4526,6 +4652,7 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
             pdfFundoImagem = null;
             pdfFundoImagemGlobal = null;
             localStorage.removeItem('pdfFundoImagem');
+            await idbPdf.set('pdfFundoImagem', null);
             const verPdf = String(Date.now());
             await database.ref('servisData/pdfFundoImagem').set(null);
             await database.ref('servisData/pdfFundoVer').set(verPdf);
@@ -5211,10 +5338,15 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
             const dev = montarDevolucao();
             if (!dev) return;
             if (!(await askConfirm({ title: 'Finalizar devolução', message: `Confirmar a devolução ${dev.cod} para ${dev.nomeCliente}?`, okText: 'Confirmar' }))) return;
+            let anexosPreparados = [];
+            try {
+                if ((state._anexosTemp || []).length) showNotification('Enviando anexos', 'Aguarde...', 'info');
+                anexosPreparados = await prepararAnexos(state._anexosTemp);
+            } catch (e) { console.error(e); showNotification('Erro', 'Não foi possível enviar os anexos. Verifique a conexão.', 'error'); return; }
             const dataAtual = new Date().toISOString();
             state.devolucoes.push({ ...dev, status: 'Almoxarifado', notaDevolucao: '', emailTipo: '',
                 dataCriacao: dataAtual, devolvidoPor: currentUser ? currentUser.nome : 'Sistema',
-                anexos: state._anexosTemp || [] });
+                anexos: anexosPreparados });
             state.nextDev++;
             saveData();
             state._anexosTemp = [];
@@ -6004,6 +6136,7 @@ html[data-theme="dark"] body .hdr-actions .btn-icon:hover{background:#1a1208!imp
                 return;
             }
             if (await askConfirm({ title: 'Excluir devolução', message: `Excluir a devolução ${dev.cod} do cliente ${dev.nomeCliente}? Esta ação não pode ser desfeita.`, okText: 'Excluir', danger: true })) {
+                blobDelete((dev.anexos || []).map(a => a && a.ref));
                 state.devolucoes.splice(idx, 1);
                 saveData();
                 renderAll();
@@ -6486,10 +6619,17 @@ Atenciosamente, ${currentUser ? currentUser.nome : 'Lucas Bezerra Rodrigues'}`
             const files = Array.from(event.target.files);
             files.forEach(file => {
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    dev.anexos.push({ nome: file.name, tipo: file.type, tamanho: file.size, dados: e.target.result });
-                    renderAnexosEdicao(idx);
-                    saveData();
+                reader.onload = async function(e) {
+                    try {
+                        const dados = await comprimirImagemDataUrl(e.target.result);
+                        let ref = null;
+                        try { ref = await blobPut(dados); } catch (e2) { console.warn('servisBlobs indisponível, salvando anexo junto aos dados', e2); }
+                        dev.anexos.push(ref
+                            ? { nome: file.name, tipo: /^data:image\/jpeg/i.test(dados) ? 'image/jpeg' : file.type, tamanho: file.size, ref }
+                            : { nome: file.name, tipo: file.type, tamanho: file.size, dados });
+                        renderAnexosEdicao(idx);
+                        saveData();
+                    } catch (err) { console.error(err); showNotification('Erro', 'Não foi possível enviar o anexo.', 'error'); }
                 };
                 reader.readAsDataURL(file);
             });
@@ -6515,12 +6655,15 @@ Atenciosamente, ${currentUser ? currentUser.nome : 'Lucas Bezerra Rodrigues'}`
             `).join('');
         }
 
-        function baixarAnexoEdicao(idx, i) {
+        async function baixarAnexoEdicao(idx, i) {
             const dev = state.devolucoes[idx];
             if (!dev || !dev.anexos || !dev.anexos[i]) return;
             const a = dev.anexos[i];
+            let dados = null;
+            try { dados = await dadosDoAnexo(a); } catch (e) {}
+            if (!dados) { showNotification('Erro', 'Arquivo indisponível.', 'error'); return; }
             const link = document.createElement('a');
-            link.href = a.dados;
+            link.href = dados;
             link.download = a.nome;
             document.body.appendChild(link);
             link.click();
@@ -6530,7 +6673,8 @@ Atenciosamente, ${currentUser ? currentUser.nome : 'Lucas Bezerra Rodrigues'}`
         function removerAnexoEdicao(idx, i) {
             const dev = state.devolucoes[idx];
             if (dev && dev.anexos) {
-                dev.anexos.splice(i, 1);
+                const removido = dev.anexos.splice(i, 1)[0];
+                if (removido && removido.ref) blobDelete([removido.ref]);
                 renderAnexosEdicao(idx);
                 saveData();
             }
@@ -6545,10 +6689,10 @@ Atenciosamente, ${currentUser ? currentUser.nome : 'Lucas Bezerra Rodrigues'}`
                 <style>body{font-family:'Segoe UI',sans-serif;padding:20px;} .item{border:1px solid #ccc;padding:10px;margin:8px 0;border-radius:0;} a{color:#1a4a8a;}</style>
                 </head><body>
                 <h2>Anexos da devolução ${dev.cod} - ${dev.nomeCliente}</h2>
-                ${dev.anexos.map(a => `
+                ${dev.anexos.map((a, i) => `
                     <div class="item">
                         <strong>${a.nome}</strong> (${(a.tamanho/1024).toFixed(1)} KB)
-                        <br><a href="${a.dados}" download="${a.nome}">Baixar</a>
+                        <br><a href="javascript:void(0)" onclick="window.opener && window.opener.baixarAnexoEdicao(${idx},${i})">Baixar</a>
                     </div>
                 `).join('')}
                 </body></html>
@@ -7302,12 +7446,24 @@ Atenciosamente, ${currentUser ? currentUser.nome : 'Lucas Bezerra Rodrigues'}`
             if (!fornecedor) { showNotification('Erro', 'Selecione o fornecedor.', 'error'); return; }
             if (!whatsapp) { showNotification('Erro', 'Informe o WhatsApp de destino.', 'error'); return; }
 
+            let fotoRef = null;
+            if (notaFotoTemp) {
+                fotoRef = blobNovoId();
+                const dadosFoto = notaFotoTemp;
+                comprimirImagemDataUrl(dadosFoto).then(d => blobPutId(fotoRef, d))
+                    .catch(err => {
+                        // plano B: grava a foto junto à nota (como antes)
+                        console.warn('servisBlobs indisponível, salvando foto junto à nota', err);
+                        const n = state.notasRecebidas.find(x => x.fotoRef === fotoRef);
+                        if (n) { n.foto = dadosFoto; delete n.fotoRef; saveData(); renderNotas(); }
+                    });
+            }
             const nota = {
                 id: Date.now(),
                 numero,
                 fornecedor,
                 obs,
-                foto: notaFotoTemp || null,
+                fotoRef: fotoRef,
                 whatsapp,
                 status: 'Enviada p/ WhatsApp',
                 data: new Date().toISOString(),
@@ -7345,7 +7501,7 @@ Atenciosamente, ${currentUser ? currentUser.nome : 'Lucas Bezerra Rodrigues'}`
                     <td>${n.fornecedor}</td>
                     <td><span class="badge ${badge}">${n.status}</span></td>
                     <td>${data}</td>
-                    <td>${n.foto ? `<i class="fas fa-image action-icon" onclick="verFotoNota(${n.id})" title="Ver foto"></i>` : '-'}</td>
+                    <td>${(n.foto || n.fotoRef) ? `<i class="fas fa-image action-icon" onclick="verFotoNota(${n.id})" title="Ver foto"></i>` : '-'}</td>
                     <td>
                         <i class="fas fa-eye action-icon" onclick="verNota(${n.id})" title="Detalhes"></i>
                         <i class="fas fa-check action-icon" onclick="mudarStatusNota(${n.id},'Entrada (OK)')" title="Marcar como Entrada OK"></i>
@@ -7369,10 +7525,13 @@ Atenciosamente, ${currentUser ? currentUser.nome : 'Lucas Bezerra Rodrigues'}`
 
         function verFotoNota(id) {
             const nota = state.notasRecebidas.find(n => n.id === id);
-            if (!nota || !nota.foto) return;
+            if (!nota || !(nota.foto || nota.fotoRef)) return;
             const win = window.open('', '_blank');
-            win.document.write(`<html><head><title>Foto NF ${nota.numero}</title></head><body style="text-align:center;padding:20px;"><h3>NF ${nota.numero} - ${nota.fornecedor}</h3><img src="${nota.foto}" style="max-width:100%;max-height:90vh;"></body></html>`);
-            win.document.close();
+            const html = (src) => `<html><head><title>Foto NF ${nota.numero}</title></head><body style="text-align:center;padding:20px;font-family:sans-serif;"><h3>NF ${nota.numero} - ${nota.fornecedor}</h3>${src ? `<img src="${src}" style="max-width:100%;max-height:90vh;">` : '<p>Foto indisponível.</p>'}</body></html>`;
+            if (nota.foto) { win.document.write(html(nota.foto)); win.document.close(); return; }
+            win.document.write('<p style="font-family:sans-serif;padding:20px;">Carregando foto...</p>');
+            blobGet(nota.fotoRef).then(src => { win.document.open(); win.document.write(html(src)); win.document.close(); })
+                .catch(() => { win.document.open(); win.document.write(html(null)); win.document.close(); });
         }
 
         function verNota(id) {
@@ -7387,9 +7546,10 @@ Atenciosamente, ${currentUser ? currentUser.nome : 'Lucas Bezerra Rodrigues'}`
                 <p><strong>Enviado por:</strong> ${nota.enviadoPor}</p>
                 <p><strong>WhatsApp:</strong> ${nota.whatsapp}</p>
                 <p><strong>Observação:</strong> ${nota.obs || '-'}</p>
-                ${nota.foto ? `<p><strong>Foto:</strong></p><img src="${nota.foto}" style="max-width:100%;max-height:200px;border:1px solid var(--divider);">` : ''}
+                ${(nota.foto || nota.fotoRef) ? `<p><strong>Foto:</strong></p><img id="verNotaImg" src="${nota.foto || ''}" style="max-width:100%;max-height:200px;border:1px solid var(--divider);">` : ''}
             `;
             document.getElementById('popupVerNota').style.display = 'flex';
+            if (nota.fotoRef && !nota.foto) blobGet(nota.fotoRef).then(v => { const im = document.getElementById('verNotaImg'); if (im && v) im.src = v; }).catch(() => {});
         }
 
         function mudarStatusNota(id, novoStatus) {
@@ -7405,6 +7565,7 @@ Atenciosamente, ${currentUser ? currentUser.nome : 'Lucas Bezerra Rodrigues'}`
             const nota = state.notasRecebidas.find(n => n.id === id);
             if (!nota) return;
             if (!(await askConfirm({ title: 'Excluir nota', message: `Excluir a nota ${nota.numero}? Esta ação não pode ser desfeita.`, okText: 'Excluir', danger: true }))) return;
+            blobDelete([nota.fotoRef]);
             state.notasRecebidas = state.notasRecebidas.filter(n => n.id !== id);
             saveData();
             renderNotas();
